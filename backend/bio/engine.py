@@ -8,12 +8,13 @@ Guarantees:
 - FloodWaitError is caught and slept precisely; all other errors are
   logged as warnings so the loop never terminates on Telegram throttles.
 - Only one updater task can exist at a time (start_cron is idempotent).
+- Timezone resolved via zoneinfo with UTC fallback — never crashes.
 """
 import asyncio
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-import pytz
 from telethon.errors import FloodWaitError
 
 from backend.db import client as db_client
@@ -23,8 +24,17 @@ logger = logging.getLogger(__name__)
 _task: asyncio.Task | None = None
 
 
+def _get_tz(tz_str: str):
+    """Resolve a timezone — zoneinfo first, UTC fallback."""
+    try:
+        return ZoneInfo(tz_str)
+    except (ZoneInfoNotFoundError, Exception):
+        logger.warning("Timezone '%s' not found — falling back to UTC.", tz_str)
+        return timezone.utc
+
+
 def render_bio(template: str, mood: str, text: str, tz_str: str) -> str:
-    tz = pytz.timezone(tz_str)
+    tz = _get_tz(tz_str)
     now = datetime.now(tz)
     return (
         template
@@ -34,7 +44,7 @@ def render_bio(template: str, mood: str, text: str, tz_str: str) -> str:
     )
 
 
-def _seconds_to_next_minute(tz: pytz.BaseTzInfo) -> float:
+def _seconds_to_next_minute(tz) -> float:
     now = datetime.now(tz)
     wait = 60.0 - now.second - now.microsecond / 1_000_000
     if wait <= 0:
@@ -43,7 +53,7 @@ def _seconds_to_next_minute(tz: pytz.BaseTzInfo) -> float:
 
 
 async def _cron_loop(client, owner_id: int, tz_str: str) -> None:
-    tz = pytz.timezone(tz_str)
+    tz = _get_tz(tz_str)
     logger.info("Bio cron started (tz=%s)", tz_str)
 
     while True:

@@ -14,12 +14,12 @@ import io
 import logging
 from datetime import datetime
 
-import pytz
 from telethon import events
 from telethon.tl.types import MessageMediaDocument, MessageMediaPhoto
 
 from backend.bot.handlers.guard import is_owner
 from backend.db import client as db_client
+from backend.bio.engine import _get_tz
 
 logger = logging.getLogger(__name__)
 
@@ -101,7 +101,7 @@ def register(client, owner_id: int, tz_str: str) -> None:
             return
 
         save_code = await db_client.get_next_save_code()
-        tz = pytz.timezone(tz_str)
+        tz = _get_tz(tz_str)
         now = datetime.now(tz)
 
         sender_name = "Unknown"
@@ -158,24 +158,27 @@ def register(client, owner_id: int, tz_str: str) -> None:
                 await event.edit(f"❌ Forward failed: {exc}")
                 return
 
-            db_client.insert_save({
-                "save_code": save_code,
-                "save_type": "forward",
-                "origin_chat_id": origin_chat_id,
-                "origin_msg_id": origin_msg_id,
-                "saved_chat_id": saved_chat_id,
-                "saved_msg_id": saved_msg_id,
-                "sender_name": sender_name,
-                "sender_id": sender_id,
-                "mime_type": mime_type,
-                "file_id": file_id,
-                "file_size": file_size,
-                "media_type": media_type,
-                "tags": tags,
-                "caption": None,
-                "owner_id": owner_id,
-                "created_at": now.isoformat(),
-            })
+            try:
+                db_client.insert_save({
+                    "save_code": save_code,
+                    "save_type": "forward",
+                    "origin_chat_id": origin_chat_id,
+                    "origin_msg_id": origin_msg_id,
+                    "saved_chat_id": saved_chat_id,
+                    "saved_msg_id": saved_msg_id,
+                    "sender_name": sender_name,
+                    "sender_id": sender_id,
+                    "mime_type": mime_type,
+                    "file_id": file_id,
+                    "file_size": file_size,
+                    "media_type": media_type,
+                    "tags": tags,
+                    "caption": None,
+                    "owner_id": owner_id,
+                    "created_at": now.isoformat(),
+                })
+            except Exception as exc:
+                logger.warning("save DB insert failed: %s", exc)
 
             await event.edit(
                 f"📌 **Forward Saved** `{save_code}`\n"
@@ -249,24 +252,27 @@ def register(client, owner_id: int, tz_str: str) -> None:
             saved_chat_id = sent.chat_id if sent else None
             saved_msg_id = sent.id if sent else None
 
-            db_client.insert_save({
-                "save_code": save_code,
-                "save_type": "deep",
-                "origin_chat_id": origin_chat_id,
-                "origin_msg_id": origin_msg_id,
-                "saved_chat_id": saved_chat_id,
-                "saved_msg_id": saved_msg_id,
-                "sender_name": sender_name,
-                "sender_id": sender_id,
-                "mime_type": mime_type,
-                "file_id": file_id,
-                "file_size": file_size,
-                "media_type": media_type,
-                "tags": tags,
-                "caption": caption,
-                "owner_id": owner_id,
-                "created_at": now.isoformat(),
-            })
+            try:
+                db_client.insert_save({
+                    "save_code": save_code,
+                    "save_type": "deep",
+                    "origin_chat_id": origin_chat_id,
+                    "origin_msg_id": origin_msg_id,
+                    "saved_chat_id": saved_chat_id,
+                    "saved_msg_id": saved_msg_id,
+                    "sender_name": sender_name,
+                    "sender_id": sender_id,
+                    "mime_type": mime_type,
+                    "file_id": file_id,
+                    "file_size": file_size,
+                    "media_type": media_type,
+                    "tags": tags,
+                    "caption": caption,
+                    "owner_id": owner_id,
+                    "created_at": now.isoformat(),
+                })
+            except Exception as exc:
+                logger.warning("save DB insert failed: %s", exc)
 
             await event.edit(
                 f"✅ **Deep Saved** `{save_code}`\n"

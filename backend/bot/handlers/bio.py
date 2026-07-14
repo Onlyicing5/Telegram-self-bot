@@ -13,7 +13,6 @@ All sub-commands edit the triggering message in-place (zero-spam policy).
 import logging
 from datetime import datetime
 
-import pytz
 from telethon import events
 
 from backend.bio import engine as bio_engine
@@ -70,21 +69,37 @@ def register(client, owner_id: int, tz_str: str):
             if not new_tpl:
                 await event.edit("⚠️ Template cannot be empty.")
                 return
-            db_client.update_bio_state(owner_id, {"template": new_tpl})
+            try:
+                db_client.update_bio_state(owner_id, {"template": new_tpl})
+            except Exception as exc:
+                await event.edit(f"❌ DB error: {exc}")
+                return
             await event.edit(f"✅ Template updated:\n`{new_tpl}`")
 
         elif arg.startswith("text "):
             val = arg[5:].strip()
-            db_client.update_bio_state(owner_id, {"custom_text": val})
+            try:
+                db_client.update_bio_state(owner_id, {"custom_text": val})
+            except Exception as exc:
+                await event.edit(f"❌ DB error: {exc}")
+                return
             await event.edit(f"✅ Text set to: `{val}`")
 
         elif arg.startswith("mood "):
             val = arg[5:].strip()
-            db_client.update_bio_state(owner_id, {"mood": val})
+            try:
+                db_client.update_bio_state(owner_id, {"mood": val})
+            except Exception as exc:
+                await event.edit(f"❌ DB error: {exc}")
+                return
             await event.edit(f"✅ Mood set to: `{val}`")
 
         elif arg == "on":
-            db_client.update_bio_state(owner_id, {"is_active": True})
+            try:
+                db_client.update_bio_state(owner_id, {"is_active": True})
+            except Exception as exc:
+                await event.edit(f"❌ DB error: {exc}")
+                return
             bio_engine.start_cron(client, owner_id, tz_str)
             preview = bio_engine.render_bio(
                 state.get("template", "🕒 {time} | 💭 {mood}"),
@@ -95,13 +110,17 @@ def register(client, owner_id: int, tz_str: str):
             await event.edit(f"✅ Bio cron **ON**\nPreview: `{preview}`")
 
         elif arg == "off":
-            db_client.update_bio_state(owner_id, {"is_active": False})
+            try:
+                db_client.update_bio_state(owner_id, {"is_active": False})
+            except Exception as exc:
+                await event.edit(f"❌ DB error: {exc}")
+                return
             bio_engine.stop_cron()
             await event.edit("⏹ Bio cron **OFF**")
 
         elif arg == "show":
-            tz = pytz.timezone(tz_str)
-            now = datetime.now(tz)
+            now = bio_engine._get_tz(tz_str)
+            now_dt = datetime.now(now)
             preview = bio_engine.render_bio(
                 state.get("template", "🕒 {time} | 💭 {mood}"),
                 state.get("mood", "😊"),
@@ -117,7 +136,7 @@ def register(client, owner_id: int, tz_str: str):
                 f"Text: `{state.get('custom_text') or '—'}`\n"
                 f"Last Bio: `{state.get('last_bio') or '—'}`\n"
                 f"Preview: `{preview}`\n"
-                f"Server Time ({tz_str}): `{now.strftime('%H:%M:%S')}`"
+                f"Server Time ({tz_str}): `{now_dt.strftime('%H:%M:%S')}`"
             )
 
         else:
