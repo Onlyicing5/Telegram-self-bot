@@ -57,7 +57,7 @@ def register(client, owner_id: int, tz_str: str):
         if (not arg) or (arg in ("help", "template") and " " not in arg):
             if arg == "template":
                 await event.edit(
-                    f"**Current template:**\n`{state.get('template')}`\n\n"
+                    f"**Current template:**\n`{state.get('template') or '🕒 {time} | 💭 {mood}'}`\n\n"
                     "To change: `.bio template <new template>`"
                 )
             else:
@@ -131,8 +131,8 @@ def register(client, owner_id: int, tz_str: str):
             await event.edit(
                 f"**Bio State**\n\n"
                 f"Status: `{status}`\n"
-                f"Template: `{state.get('template')}`\n"
-                f"Mood: `{state.get('mood')}`\n"
+                f"Template: `{state.get('template') or '🕒 {time} | 💭 {mood}'}`\n"
+                f"Mood: `{state.get('mood') or '😊'}`\n"
                 f"Text: `{state.get('custom_text') or '—'}`\n"
                 f"Last Bio: `{state.get('last_bio') or '—'}`\n"
                 f"Preview: `{preview}`\n"

@@ -38,10 +38,10 @@ def render_bio(template: str, mood: str, text: str, tz_str: str) -> str:
     tz = _get_tz(tz_str)
     now = datetime.now(tz)
     return (
-        template
+        (template or "🕒 {time} | 💭 {mood}")
         .replace("{time}", now.strftime("%H:%M"))
-        .replace("{mood}", mood)
-        .replace("{text}", text)
+        .replace("{mood}", mood or "😊")
+        .replace("{text}", text or "")
     )
 
 
@@ -62,19 +62,20 @@ async def _cron_loop(client, owner_id: int, tz_str: str) -> None:
 
         try:
             state = db_client.get_bio_state(owner_id)
+            logger.info("Bio cron state: %r", state)
 
             if not state or not state.get("is_active"):
                 logger.info("Bio cron: is_active=False — stopping loop.")
                 return
 
-            new_bio = render_bio(
-                state.get("template", "🕒 {time} | 💭 {mood}"),
-                state.get("mood", "😊"),
-                state.get("custom_text", ""),
-                tz_str,
-            )
+            tmpl = state.get("template", "🕒 {time} | 💭 {mood}")
+            mood = state.get("mood", "😊")
+            ctxtxt = state.get("custom_text", "")
+            logger.info("Bio cron render args: template=%r mood=%r custom_text=%r", tmpl, mood, ctxtxt)
 
-            if new_bio == state.get("last_bio", ""):
+            new_bio = render_bio(tmpl, mood, ctxtxt, tz_str)
+
+            if new_bio == (state.get("last_bio") or ""):
                 continue
 
             try:
@@ -97,8 +98,8 @@ async def _cron_loop(client, owner_id: int, tz_str: str) -> None:
         except asyncio.CancelledError:
             logger.info("Bio cron cancelled.")
             raise
-        except Exception as exc:
-            logger.warning("Bio cron tick error (will retry next minute): %s", exc)
+        except Exception:
+            logger.exception("Bio cron tick error (will retry next minute)")
 
 
 def start_cron(client, owner_id: int, tz_str: str) -> None:
