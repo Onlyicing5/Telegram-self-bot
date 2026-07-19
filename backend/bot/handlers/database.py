@@ -1,0 +1,1 @@
+open('backend/bot/handlers/database.py').read()
