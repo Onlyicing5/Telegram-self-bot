@@ -3,11 +3,15 @@
 .id    — Chat ID + Message ID of the current context.
 .help  — Full command reference.
 .health — Internal health report from backend/health.py.
+.kill   — Diagnostic snapshot + stalled-task recovery.
 """
 import logging
 from telethon import events
 from backend.bot.handlers.guard import is_owner
 from backend import health
+from backend import diagnostics
+from backend.bio import engine as bio_engine
+from backend.db import client as db_client
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +52,9 @@ _HELP = (
     "  `.id`     — Chat & Msg IDs\n"
     "  `.health` — Health report\n"
     "  `.help`   — This message\n"
+    "\n"
+    "🔧 **Diagnostics**\n"
+    "  `.kill`   — Snapshot + stalled-task recovery\n"
     "━━━━━━━━━━━━"
 )
 
@@ -151,3 +158,23 @@ def register(client, owner_id: int):
             await event.edit(report)
         except Exception as exc:
             logger.warning("health_cmd failed: %s", exc)
+
+    @client.on(events.NewMessage(outgoing=True, pattern=r"^\.kill$"))
+    async def kill_cmd(event):
+        if not is_owner(event, owner_id):
+            return
+        try:
+            snap = health.snapshot()
+            report = diagnostics.build_diagnostic_report(
+                client, bio_engine, db_client, snap
+            )
+            recovery = await diagnostics.recover_stalled(
+                client, owner_id, tz_str, bio_engine, db_client
+            )
+            await event.edit(report + recovery)
+        except Exception as exc:
+            logger.warning("kill_cmd failed: %s", exc)
+            try:
+                await event.edit(f"⚠️ Kill diagnostic failed: {exc}")
+            except Exception:
+                pass
