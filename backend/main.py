@@ -35,6 +35,8 @@ from backend.bio import engine as bio_engine
 from backend.bot.client import build_client
 from backend.bot.router import register_all
 from backend.db import client as db_client
+from backend.helper.client import build_helper, disconnect_helper
+from backend.helper.panels import register_callback_handlers
 from backend.health import (
     check_stale,
     increment_restart,
@@ -207,6 +209,21 @@ async def main() -> None:
     logger.info("[3/5] Registering command handlers")
     register_all(client, cfg["OWNER_ID"], cfg["TZ"])
 
+    # ── Phase 3.5: Helper bot (optional — inline keyboards + callbacks) ───
+    helper_client = None
+    if cfg.get("HELPER_BOT_ENABLED"):
+        logger.info("[3.5/5] Starting helper bot")
+        try:
+            helper_client = await build_helper(cfg["BOT_TOKEN"])
+            if helper_client is not None:
+                register_callback_handlers(helper_client, cfg["OWNER_ID"])
+                logger.info("[3.5/5] Helper bot online — inline UI enabled")
+        except Exception as exc:
+            logger.warning("[3.5/5] Helper bot failed: %s — inline UI disabled", exc)
+            helper_client = None
+    else:
+        logger.info("[3.5/5] Helper bot: no BOT_TOKEN — inline UI disabled")
+
     # ── Phase 4: Resume bio cron if it was active before last restart ─────
     logger.info("[4/5] Bio cron resume check")
     try:
@@ -263,7 +280,12 @@ async def main() -> None:
         task.cancel()
     await asyncio.gather(*pending, return_exceptions=True)
 
-    # ── Shutdown D: Telethon ─────────────────────────────────────────────
+    # ── Shutdown D: Helper bot ──────────────────────────────────────────
+    if helper_client is not None:
+        logger.info("Shutdown: disconnecting helper bot")
+        await disconnect_helper()
+
+    # ── Shutdown E: Telethon ─────────────────────────────────────────────
     logger.info("Shutdown: disconnecting Telethon")
     try:
         await client.disconnect()

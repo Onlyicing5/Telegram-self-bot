@@ -1,1 +1,29 @@
-services:\n  - type: web\n    name: lifeos\n    env: python\n    startCommand: python -m backend.main\n    healthCheckPath: /health\n    envVars:\n      - key: PYTHON_VERSION\n        value: 3.11.7\n      - key: API_ID\n        sync: false\n      - key: API_HASH\n        sync: false\n      - key: SESSION_STRING\n        sync: false\n      - key: BOT_OWNER_ID\n        sync: false\n      - key: SUPABASE_URL\n        sync: false\n      - key: SUPABASE_SERVICE_ROLE_KEY\n        sync: false\n      - key: TZ\n        value: Asia/Tehran\n      - key: BIO_UPDATE_ENABLED\n        value: "false"\n      - key: LOG_LEVEL\n        value: INFO\n
+services:
+  - type: web
+    name: lifeos
+    env: python
+    startCommand: python -m backend.main
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.7
+      - key: API_ID
+        sync: false
+      - key: API_HASH
+        sync: false
+      - key: SESSION_STRING
+        sync: false
+      - key: BOT_OWNER_ID
+        sync: false
+      - key: BOT_TOKEN
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: TZ
+        value: Asia/Tehran
+      - key: BIO_UPDATE_ENABLED
+        value: "false"
+      - key: LOG_LEVEL
+        value: INFO

@@ -24,11 +24,15 @@ def load() -> dict:
     supabase_url = os.getenv("SUPABASE_URL", "")
     supabase_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 
+    bot_token = os.getenv("BOT_TOKEN", "")
+
     return {
         "API_ID": int(os.environ["API_ID"]),
         "API_HASH": os.environ["API_HASH"],
         "SESSION_STRING": os.environ["SESSION_STRING"],
         "OWNER_ID": int(os.environ["BOT_OWNER_ID"]),
+        "BOT_TOKEN": bot_token,
+        "HELPER_BOT_ENABLED": bool(bot_token),
         "SUPABASE_URL": supabase_url,
         "SUPABASE_KEY": supabase_key,
         "SUPABASE_AVAILABLE": bool(supabase_url and supabase_key),
