@@ -1,3 +1,4 @@
+successfully downloaded text file (SHA: 6bfea420d550fbe8c927273eb896924de26ba453)
 """
 .ping    — Edit trigger with PONG (zero-spam policy).
 .id      — Chat ID + Message ID of the current context.
@@ -439,44 +440,24 @@ def register(client, owner_id: int):
     register_inline_builder("kill", _kill_inline_builder)
     register_inline_builder("logs", _logs_inline_builder)
 
-    # ── .help — inline panel via Inline Mode (INSTRUMENTED) ────────────
+    # ── .help — inline panel via Inline Mode ───────────────────────────
     @client.on(events.NewMessage(outgoing=True, pattern=r"^\.help$"))
     async def help_cmd(event):
-        logger.info("[HELP] LOG 1: .help handler entered (chat_id=%s, msg_id=%s)", event.chat_id, event.message.id)
+        if not is_owner(event, owner_id):
+            return
+        helper = get_client()
+        if helper is None:
+            await event.edit(_build_main_menu_text())
+            return
         try:
-            if not is_owner(event, owner_id):
-                logger.info("[HELP] owner check FAILED (sender_id=%s, owner_id=%s)", event.sender_id, owner_id)
-                return
-            logger.info("[HELP] LOG 2: owner check passed (sender_id=%s)", event.sender_id)
-
-            helper = get_client()
-            logger.info("[HELP] LOG 3: helper client acquired (helper=%s)", "None" if helper is None else "connected")
-            if helper is None:
-                logger.info("[HELP] helper is None — falling back to edit-in-place")
-                await event.edit(_build_main_menu_text())
-                logger.info("[HELP] LOG 7: handler finished (edit-in-place fallback)")
-                return
-
-            logger.info("[HELP] LOG 4: about to send inline panel (query='help', chat_id=%s)", event.chat_id)
-            panel_ok = await send_inline_panel(client, event.chat_id, "help")
-            logger.info("[HELP] LOG 5: send_inline_panel returned (ok=%s)", panel_ok)
-
-            if not panel_ok:
-                logger.warning("[HELP] send_inline_panel returned False — falling back to edit-in-place")
-                await event.edit(_build_main_menu_text())
-                logger.info("[HELP] LOG 7: handler finished (fallback after failed inline)")
-                return
-
+            await event.delete()
+            await send_inline_panel(client, event.chat_id, "help")
+        except Exception as exc:
+            logger.warning("help inline send failed: %s", exc)
             try:
-                await event.delete()
-                logger.info("[HELP] LOG 6: trigger deleted (msg_id=%s)", event.message.id)
-            except Exception as del_exc:
-                logger.warning("[HELP] event.delete() failed: %s", del_exc)
-
-            logger.info("[HELP] LOG 7: handler finished (success)")
-        except Exception:
-            logger.exception("[HELP] unhandled exception in .help handler")
-            raise
+                await event.edit(_build_main_menu_text())
+            except Exception:
+                pass
 
     # ── .health — inline panel via Inline Mode ────────────────────────
     @client.on(events.NewMessage(outgoing=True, pattern=r"^\.health$"))
